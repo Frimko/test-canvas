@@ -1,24 +1,13 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import {useGetSet} from 'react-use';
+import React from 'react';
 import _maxBy from 'lodash/maxBy';
 
-import { coords } from './coords';
+import {coords} from './coords';
 
 const maxX = _maxBy(coords, item => item.x).x;
 const maxY = _maxBy(coords, item => item.y).y;
 
 const HEIGHT = 500;
 const WIDTH = 500;
-
-function useStateRef() {
-  const [nodeRef, setRef] = useState(null);
-  const ref = useCallback(node => {
-    if (node !== null) {
-      setRef(node);
-    }
-  }, []);
-  return [nodeRef, ref];
-}
 
 function setEvent(target, eventName, fn) {
   const event = target.addEventListener(eventName, fn);
@@ -32,18 +21,29 @@ function setEvent(target, eventName, fn) {
   };
 }
 
-const App = () => {
-  const [getPos, setPos] = useGetSet({ x: 0, y: 0 });
-  const [canvas, refCanvas] = useStateRef(null);
+class App extends React.Component {
 
-  let eventMove;
-  let eventUp;
-  let eventDown;
+  state = { x: 0, y: 0 };
 
-  const draw = () => {
-    if(!canvas) return;
-    const pos = getPos();
+  eventMove = null;
+  eventUp = null;
+  eventDown = null;
+  canvas = React.createRef();
 
+  componentDidMount() {
+    this.draw();
+    this.events();
+  }
+
+  componentDidUpdate() {
+    this.draw();
+  }
+
+  draw = () => {
+    const canvas = this.canvas.current;
+    if (!canvas) return;
+
+    const pos = this.state;
     const ctx = canvas.getContext("2d");
     const rectCanvas = canvas.getBoundingClientRect();
     const { width, height } = rectCanvas;
@@ -65,12 +65,16 @@ const App = () => {
 
     for (let i = 0; i < filteredCoords.length; i++) {
       const { x, y } = filteredCoords[i];
-      ctx.fillRect(x, y, 10 , 10);
+      ctx.fillRect(x, y, 10, 10);
     }
   }
 
-  const events = () => {
-    if(!canvas) return;
+  events = () => {
+    const canvas = this.canvas.current;
+    let { eventMove, eventUp, eventDown } = this;
+    if (eventDown) eventDown.removeEvent();
+    if (eventUp) eventUp.removeEvent();
+    if (eventMove) eventMove.removeEvent();
 
     const onDown = (MDevent) => {
       const firstMousePos = {
@@ -78,7 +82,7 @@ const App = () => {
         y: MDevent.clientY
       };
 
-      const pos = getPos();
+      const pos = this.state;
       const onMove = (MMevent) => {
         const secondMousePos = {
           x: MMevent.clientX,
@@ -92,11 +96,11 @@ const App = () => {
         let posY = secondMousePos.y - firstMousePos.y + pos.y;
         if (posY > 0) posY = 0;
         if (posY < -maxY + HEIGHT) posY = -maxY + HEIGHT - 1; //1px for bottom point
-        setPos({ x: posX, y: posY });
+
+        this.setState({ x: posX, y: posY });
       };
 
       const onUp = () => {
-
         if (eventUp) eventUp.removeEvent();
         if (eventMove) eventMove.removeEvent();
       };
@@ -105,30 +109,26 @@ const App = () => {
       eventMove = setEvent(canvas, 'mousemove', onMove);
     }
 
-    eventDown = setEvent(canvas, 'mousedown', onDown);
+    this.eventDown = setEvent(canvas, 'mousedown', onDown);
   }
 
-  useEffect(() => {
-    draw();
-  });
+  componentWillUnmount() {
+    const { eventMove, eventUp, eventDown } = this;
 
-  useEffect(() => {
-    events();
+    if (eventDown) eventDown.removeEvent();
+    if (eventUp) eventUp.removeEvent();
+    if (eventMove) eventMove.removeEvent();
+  }
 
-    return () => {
-      if (eventDown) eventDown.removeEvent();
-      if (eventUp) eventUp.removeEvent();
-      if (eventMove) eventMove.removeEvent();
-    };
-  }, [canvas])
-
-  return (
-    <canvas
-      ref={refCanvas}
-      width={WIDTH}
-      height={HEIGHT}
-    />
-  );
+  render() {
+    return (
+      <canvas
+        ref={this.canvas}
+        width={WIDTH}
+        height={HEIGHT}
+      />
+    );
+  }
 }
 
 export default App;
