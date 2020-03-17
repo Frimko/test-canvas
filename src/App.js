@@ -65,7 +65,9 @@ const App = () => {
 
     for (let i = 0; i < filteredCoords.length; i++) {
       const { x, y } = filteredCoords[i];
-      ctx.fillRect(x, y, 10 , 10);
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, 2 * Math.PI);
+      ctx.fill();
     }
   }
 
